@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <meta name="theme-color" content="#0a0e17">
+  <title>🔐 Secure Share</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <section id="auth-section" class="card auth-card">
+      <div class="brand">
+        <div class="logo">🔐</div>
+        <h1>Secure Share</h1>
+        <p class="subtitle">Zero-knowledge · end-to-end encrypted</p>
+      </div>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" placeholder="e.g. alice" autocomplete="username">
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-field">
+          <input id="password" type="password" placeholder="At least 6 characters" autocomplete="current-password">
+          <label for="show-pw" class="toggle-pw" id="toggle-pw-label">Show</label>
+          <input type="checkbox" id="show-pw" style="display:none">
+        </div>
+      </div>
+
+      <div class="row auth-actions">
+        <button class="btn-primary" onclick="login()">Login</button>
+        <button class="btn-secondary" onclick="register()">Register</button>
+      </div>
+      <p id="auth-msg" class="msg"></p>
+      <p class="tiny hint">Your files are encrypted in your browser. The server never sees them.</p>
+    </section>
+
+    <section id="main-section" style="display:none">
+      <header class="topbar">
+        <div class="user-info">
+          <div class="avatar" id="avatar">?</div>
+          <div>
+            <div class="user-name" id="current-user"></div>
+            <div class="user-tag">🔐 End-to-end encrypted</div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon" onclick="exportPrivateKey()" title="Export private key">🔑</button>
+          <button class="btn-icon" onclick="importPrivateKey()" title="Import private key">📥</button>
+          <button class="btn-icon btn-icon-danger" onclick="logout()" title="Logout">↩</button>
+        </div>
+      </header>
+      <input type="file" id="import-key-input" accept=".key,.json,application/json" style="display:none" onchange="handleImportKey(this)">
+
+      <div class="card">
+        <div class="card-header">
+          <h2>⬆️ Upload Files</h2>
+          <p class="hint">Encrypted in your browser before upload</p>
+        </div>
+        <label class="file-drop" for="file-input">
+          <input type="file" id="file-input" multiple accept="*/*" onchange="onFilesSelected()">
+          <div class="file-drop-inner">
+            <div class="file-drop-icon">📂</div>
+            <div class="file-drop-text">
+              <strong>Tap to choose files</strong>
+              <span>or drag & drop — any type, multiple allowed</span>
+            </div>
+          </div>
+        </label>
+        <ul id="selected-files" class="file-list selected-list"></ul>
+        <button id="upload-btn" class="btn-primary btn-block" onclick="uploadFile()" disabled>Encrypt & Upload</button>
+        <p id="upload-status" class="hint"></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>📁 My Files</h2>
+          <span id="owned-count" class="count">0 selected</span>
+        </div>
+        <div class="toolbar">
+          <label class="select-all-label">
+            <input type="checkbox" id="select-all-owned" onchange="toggleSelectAllOwned(this)">
+            <span>Select All</span>
+          </label>
+          <div class="toolbar-actions">
+            <button class="btn-secondary btn-sm" onclick="shareSelectedOwned()">📤 Share</button>
+            <button class="btn-secondary btn-sm" onclick="downloadSelectedOwned()">📦 ZIP</button>
+            <button class="btn-danger btn-sm" onclick="deleteSelectedOwned()">🗑 Delete</button>
+          </div>
+        </div>
+        <ul id="my-files" class="file-list"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>📨 Shared With Me</h2>
+          <span id="shared-count" class="count">0 selected</span>
+        </div>
+        <div class="toolbar">
+          <label class="select-all-label">
+            <input type="checkbox" id="select-all-shared" onchange="toggleSelectAllShared(this)">
+            <span>Select All</span>
+          </label>
+          <div class="toolbar-actions">
+            <button class="btn-secondary btn-sm" onclick="downloadSelectedShared()">📦 ZIP</button>
+            <button class="btn-danger btn-sm" onclick="removeSelectedShared()">🗑 Remove</button>
+          </div>
+        </div>
+        <ul id="shared-files" class="file-list"></ul>
+      </div>
+    </section>
+  </div>
+
+  <div id="preview-modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="preview-title">Preview</strong>
+        <button class="btn-icon" onclick="closePreview()">✕</button>
+      </div>
+      <div id="preview-body"></div>
+    </div>
+  </div>
+
+  <div id="shares-modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="shares-title">Manage Shares</strong>
+        <button class="btn-icon" onclick="closeSharesModal()">✕</button>
+      </div>
+      <div id="shares-body"></div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const cb = document.getElementById('show-pw');
+      const pwd = document.getElementById('password');
+      const label = document.getElementById('toggle-pw-label');
+      if (cb && pwd && label) {
+        cb.addEventListener('change', function() {
+          pwd.type = cb.checked ? 'text' : 'password';
+          label.textContent = cb.checked ? 'Hide' : 'Show';
+        });
+      }
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { closePreview(); closeSharesModal(); }
+      });
+    });
+  </script>
+</body>
+</html>

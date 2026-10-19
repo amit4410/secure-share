@@ -1,0 +1,21 @@
+{
+  "name": "secure-share",
+  "version": "1.0.0",
+  "description": "Zero-knowledge E2EE file sharing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env.local server.js"
+  },
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "pg": "^8.23.1"
+  }
+}
